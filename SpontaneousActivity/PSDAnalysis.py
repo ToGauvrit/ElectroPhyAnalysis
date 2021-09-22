@@ -28,9 +28,6 @@ start_time = time.time()
 med_vec = np.vectorize(np.median)
 
 
-
-
-
 def welch_psd(signal,sampling_frequency):
     signal = np.array(signal)
     win = 4 * sampling_frequency
@@ -105,7 +102,7 @@ def computation_psd_bands(psd_dataframe_group1,psd_dataframe_group2,freqs,group1
         psd_per_bands["Group"]=row["Group"]
         psd_per_bands["Filename"] = row["Filename"]
         output_result=output_result.append(psd_per_bands,ignore_index=True)
-
+    output_result = output_result[["Filename", "Group", "Delta", 'Theta', 'Alpha',"Beta","Gamma"]]#reorder the columns
     if output_filename:
         output_result.to_csv(output_filename)
     else:
