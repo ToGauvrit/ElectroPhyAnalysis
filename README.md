@@ -11,6 +11,9 @@ The different types of recordings analyzed are spontaneous recordings, evoked ac
 # Requirements:
   - Python 3.6 or more
   - the versions of the differents python libraries are avaible in the requirements.txt
+
+# Documentation:
+All the documentation can be found [here](https://electrophyanalysis.readthedocs.io/en/latest/).
   
 ## Timeline
 This github project started in September 2021 but is mainly a rework of 2020 scripts
