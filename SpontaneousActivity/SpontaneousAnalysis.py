@@ -6,8 +6,8 @@ Compute PSD analysis, first method upstate/downstate detection, and second metho
 """
 
 from PSDAnalysis import plot_periodogram, computation_psd_bands, psd_computation
-from UpstateDownStateAnalysis import two_groups_states_computation
-from UpDown_states_Alenda_method import group_UDSD_computation
+from UpstateDownstateAnalysis import two_groups_states_computation
+from UpstateDownstateAlendaMethod import group_UDSD_computation
 
 
 
