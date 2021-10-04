@@ -1,20 +1,141 @@
 """
 Théo Gauvrit
+Mai 2020
 
-September 2021
-
-Rework of the upstate/downstate detection scripts to make them clearer and easier to use
-The process is still long.
+Compute the detection of Upstate and Downstates from two datasets(WT,KO).
+Each Up/Downstates parameters from every files will be returned in a dataframe.
+A dataframe (Metrics) can be returned to have visual of the detection in the signal in a plot.
 """
-from UDSD_09 import get_states
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import os
-import pyabf
 import numpy as np
-from Utils import browse_directory
+import math as math
+from scipy.stats import  median_absolute_deviation, variation
+import pandas as pd
+import time
+import os
+import matplotlib
+import matplotlib.pyplot as plt
+import pyabf
 
+#Todo rework this code again to make it clearer and faster, implement downsampling
+
+
+def get_states(signal,sampling_frequency, filename, downsampling, p_duration=None):
+    """Return the signal with the corresponding detection decision ready to plot,
+    the dataframe containing the list of states and the correspondings measures and
+    a dictionary with the average measure for the whole signal """
+
+
+    def get_ti(timestamp,  time_series):
+        return len(time_series) - len(time_series[time_series > timestamp])
+
+    def shift_corection(data, index, coeff):
+        return data + (-coeff * index)
+    vec_shift = np.vectorize(shift_corection)
+    start_time = time.time()
+    signal = signal[::downsampling]
+    chunk1 = np.median(signal[:100000])
+    chunk2 = np.median(signal[-100000:])
+    coeff = (chunk2 - chunk1) / len(signal)
+    indices = range(len(signal))
+    signal = vec_shift(signal, indices, coeff)
+    n_points = len(signal)  # number of points
+
+    # time values
+    time_step = (5e-5)*downsampling
+    if p_duration==None:
+        duration=n_points/sampling_frequency
+    else:
+        duration = p_duration
+    time_set = np.arange(0, duration, time_step)
+    rang = np.arange(1, len(time_set),1)
+
+    signal= np.array(signal)
+    # automatic detection of up and down states
+    k=0
+    min_value = min(signal)
+    max_value = max(signal)
+    loc_median = np.median(signal[:int((duration/time_step))])
+    loc_mad = median_absolute_deviation(signal)
+    ub = loc_median+k*loc_mad
+    lb=loc_median-k*loc_mad
+    uads =[]
+    min_state_duration= 0.1  # s
+    intervalle=get_ti(min_state_duration,time_set)-get_ti(0,time_set)
+    h_int=math.floor(intervalle/2)
+    print(h_int)
+    h_int_t = int(math.floor((8 / time_step) / 2))
+    loc_range= np.arange((1+h_int),(-1+len(rang)-h_int),1)
+    #   loc_range = range(h_int, 20000-h_int)
+    loc_signal=[]
+    loc_time=[]
+    loc_metric_1=[]
+    loc_metric_2=[]
+    loc_metric_3=[]
+    loc_threshold=[]
+    val = min_value
+    threshold = np.median(signal[(0 + h_int_t)])
+    for i in loc_range:
+        loc_series=signal[(i-h_int):(i+h_int)]
+        temp_median=np.median(loc_series)
+
+        if i % 20000 == 0:
+            threshold = np.median(signal[(i - h_int_t):(i + h_int_t)])
+            print(i/20000)
+        to_test = temp_median
+        if not np.isnan(to_test):
+
+            if to_test > threshold:
+                val = max_value
+
+            else:
+                val = min_value
+        uads.append(val)
+        loc_time.append(time_set[i])
+        loc_signal.append(signal[i])
+        loc_threshold.append(threshold)
+
+    metrics = pd.DataFrame({"Time": loc_time,"Signal": loc_signal, "Threshold":loc_threshold, "uads": uads})
+    metrics=metrics[5*20000:]
+    print("--- %s seconds ---" % (time.time() - start_time))
+    res={}
+    mylen = np.vectorize(len)
+    states_splitted = np.split(metrics["uads"], np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1)
+    index_states=np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1
+    states_list=pd.DataFrame()
+    states_splitted.pop(0)
+    for i in range(len(states_splitted)-1):
+        if states_splitted[i].iloc[0]==min_value:
+            state="Down"
+        else:
+            state="Up"
+
+        onset=index_states[i]/20000
+
+        state_item = pd.DataFrame({"Filename": filename,
+                               "State":state,
+                               "Start":onset+5.05,
+                               "End":(index_states[i]+len(states_splitted[i]))/20000+5.05,
+                               "Duration":len(states_splitted[i])/20000,
+                               "Mean Value":np.round(np.mean(metrics["Signal"][index_states[i]:index_states[i]+len(states_splitted[i])]),3),
+                               "Variation PM":np.round(variation(metrics["Signal"][index_states[i]:index_states[i]+len(states_splitted[i])]),3)
+                               },index=[i])
+        states_list=states_list.append(state_item)
+    #
+    #states_splitted[np.argwhere(mylen(np.delete(states_splitted,0)[::2])>100*20)]=min_value #threshold at 100ms minimum duration upstate
+    #frequency of Upstate and Downstate
+    frequency_up= len(metrics["uads"][metrics["uads"] == max_value])
+    frequency_down= len(metrics["uads"][metrics["uads"] == min_value])
+    res["up_frequency"] = (frequency_up/len(metrics["uads"]))
+    res["down_frequency"] = (frequency_down/len(metrics["uads"]))
+    #Average of duration of Up/Downstate
+    #states_splitted = np.split(uads, np.argwhere(np.diff(uads) != 0)[:,0] + 1)
+    res["down_duration"] = (np.mean(mylen(states_splitted[::2]))*time_step)
+    res["up_duration"] = (np.mean(mylen(np.delete(states_splitted,0)[::2]))*time_step)
+    #Average value of Up/Downstate
+    res["down_value"] = np.mean(metrics["Signal"][metrics["uads"] == min_value])
+    res["up_value"] = np.mean(metrics["Signal"][metrics["uads"] == max_value])
+    res["filename"] = filename
+    return metrics,states_list,res
 
 def states_computation(group_name, directory_path, sf, downsampling_coeff):
     print("Up/Down state computaion for " + str(group_name) + " files")
@@ -80,3 +201,4 @@ if __name__ == '__main__':
     folders = {group1_name: group1_path, group2_name: group2_path}
     every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
                                                                sampling_frequency, downsampling_coeff)
+
