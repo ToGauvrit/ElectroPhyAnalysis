@@ -28,6 +28,9 @@ start_time = time.time()
 med_vec = np.vectorize(np.median)
 
 
+
+
+
 def welch_psd(signal,sampling_frequency):
     signal = np.array(signal)
     win = 4 * sampling_frequency
@@ -35,7 +38,7 @@ def welch_psd(signal,sampling_frequency):
     return freqs, psd
 
 
-def psd_computation(group_name,directory_path):
+def psd_computation(group_name,directory_path, sampling_frequency):
     print("PSD computaion for " + str(group_name) + " files")
     output_dataframe=pd.DataFrame()
     files = browse_directory(directory_path, ".abf")
@@ -52,7 +55,7 @@ def psd_computation(group_name,directory_path):
     return output_dataframe, freqs
 
 
-def plot_periodogram(psd_dataframe_group1,psd_dataframe_group2, freqs, lim_band,output_filename=None,median=False):
+def plot_periodogram(group1_name, group2_name, psd_dataframe_group1,psd_dataframe_group2, freqs, lim_band,output_filename=None,median=False,):
     """Plot the periodogram with two groups"""
     fig, ax = plt.subplots(1, 1, figsize=(13, 8))
     if median is True:
@@ -102,7 +105,7 @@ def computation_psd_bands(psd_dataframe_group1,psd_dataframe_group2,freqs,group1
         psd_per_bands["Group"]=row["Group"]
         psd_per_bands["Filename"] = row["Filename"]
         output_result=output_result.append(psd_per_bands,ignore_index=True)
-    output_result = output_result[["Filename", "Group", "Delta", 'Theta', 'Alpha',"Beta","Gamma"]]#reorder the columns
+    output_result = output_result[["Filename", "Group", "Delta", 'Theta', 'Alpha', "Beta", "Gamma"]]  # reorder the columns
     if output_filename:
         output_result.to_csv(output_filename)
     else:
@@ -122,7 +125,7 @@ if __name__ == '__main__':
 
 
     folders = {group1_name: group1_path, group2_name: group2_path}
-    psd_grp1, freqs = psd_computation(group1_name, group1_path)
-    psd_grp2, freqs = psd_computation(group2_name, group2_path)
-    plot_periodogram(psd_grp1,psd_grp2,freqs,lim_band=[0, 100],median=True)
+    psd_grp1, freqs = psd_computation(group1_name, group1_path, sampling_frequency)
+    psd_grp2, freqs = psd_computation(group2_name, group2_path, sampling_frequency)
+    plot_periodogram(group1_name,group2_name,psd_grp1,psd_grp2,freqs,lim_band=[0, 100],median=True)
     output_result=computation_psd_bands(psd_grp1,psd_grp2,freqs,group1_name, group2_name,bands)
