@@ -15,6 +15,7 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import pyabf
+from Utils import browse_directory
 
 #Todo rework this code again to make it clearer and faster, implement downsampling
 

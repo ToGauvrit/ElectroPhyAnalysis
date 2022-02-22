@@ -28,9 +28,6 @@ start_time = time.time()
 med_vec = np.vectorize(np.median)
 
 
-
-
-
 def welch_psd(signal,sampling_frequency):
     signal = np.array(signal)
     win = 4 * sampling_frequency
