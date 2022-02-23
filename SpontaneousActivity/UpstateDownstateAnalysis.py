@@ -12,7 +12,7 @@ from scipy.stats import variation
 import pandas as pd
 import time
 import os
-
+from progress.bar import IncrementalBar
 import pyabf
 from Utils import browse_directory
 
@@ -32,7 +32,7 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
         return data + (-coeff * index)
 
     vec_shift = np.vectorize(shift_corection)
-    start_time = time.time()
+
     signal = signal[::downsampling]
     chunk1 = np.median(signal[:100000])
     chunk2 = np.median(signal[-100000:])
@@ -56,7 +56,6 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
     min_state_duration = 0.1  # s
     intervalle = get_ti(min_state_duration, time_set) - get_ti(0, time_set)
     h_int = math.floor(intervalle / 2)
-    print(h_int)
     h_int_t = int(math.floor((8 / time_step) / 2))
     loc_range = np.arange((1 + h_int), (-1 + len(rang) - h_int), 1)
     loc_signal = []
@@ -70,7 +69,6 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
 
         if i % 20000 == 0:
             threshold = np.median(signal[(i - h_int_t):(i + h_int_t)])
-            print(i / 20000)
         to_test = temp_median
         if not np.isnan(to_test):
 
@@ -86,7 +84,7 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
 
     metrics = pd.DataFrame({"Time": loc_time, "Signal": loc_signal, "Threshold": loc_threshold, "uads": uads})
     metrics = metrics[5 * 20000:]
-    print("--- %s seconds ---" % (time.time() - start_time))
+
     res = {}
     mylen = np.vectorize(len)
     states_splitted = np.split(metrics["uads"], np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1)
@@ -131,14 +129,16 @@ def states_computation(group_name, directory_path, sf, downsampling_coeff):
     output_dataframe = pd.DataFrame()
     all_states_df = pd.DataFrame()
     files = browse_directory(directory_path, ".abf")
+    bar = IncrementalBar('Files anlyzed', max=len(files))
     for filename in files:
-        print(filename)
+        bar.next()
         abf_signal = pyabf.ABF(os.path.join(directory_path, filename))
         signal = np.array(abf_signal.sweepY)
         metrics, states_list, udsd_dic = get_states(signal, sf, filename, downsampling_coeff)
         udsd_dic["group"] = group_name
         all_states_df = all_states_df.append(states_list, ignore_index=True)
         output_dataframe = output_dataframe.append(udsd_dic, ignore_index=True)
+    bar.finish()
     return all_states_df, output_dataframe
 
 
@@ -173,16 +173,13 @@ def two_groups_states_computation(group1_name, group2_name, group1_path, group2_
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     # Parameters to modify
-    group1_name = "KO BMS"
-    group2_name = "KO DMSO"
-    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO BMS191011/"
-    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
+    group1_name = "WT BMS"
+    group2_name = "WT DMSO"
+    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/WT BMS191011/"
+    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/WT DMSO"
     sampling_frequency = 20000  # Hz
-    # (Optional) name of the filename that will be save containing info by cell
-    filename_output = "KO_BMS_KO_DMSO_cells.xlsx"
-    # (Optional) name of the filename that will be save containing info by states
-    filename_states = "KO_BMS_KO_DMSO_states.xlsx"
     ###########################
     """!!!!!!!!!!!!Don't change downsampling_coeff!!!!!!!!!!!!!!!!"""
     """The downsamping coeff is to make the computation faster by reducing the number of points taken in account 
@@ -193,3 +190,4 @@ if __name__ == '__main__':
     folders = {group1_name: group1_path, group2_name: group2_path}
     every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
                                                                sampling_frequency, downsampling_coeff)
+    print("--- %s seconds ---" % (time.time() - start_time))
