@@ -8,29 +8,29 @@ A dataframe (Metrics) can be returned to have visual of the detection in the sig
 """
 import numpy as np
 import math as math
-from scipy.stats import  median_absolute_deviation, variation
+from scipy.stats import variation
 import pandas as pd
 import time
 import os
-import matplotlib
-import matplotlib.pyplot as plt
+
 import pyabf
 from Utils import browse_directory
 
-#Todo rework this code again to make it clearer and faster, implement downsampling
+
+# Todo rework this code again to make it clearer and faster, implement downsampling
 
 
-def get_states(signal,sampling_frequency, filename, downsampling, p_duration=None):
+def get_states(signal, sampling_frequency, filename, downsampling, p_duration=None):
     """Return the signal with the corresponding detection decision ready to plot,
     the dataframe containing the list of states and the correspondings measures and
     a dictionary with the average measure for the whole signal """
 
-
-    def get_ti(timestamp,  time_series):
+    def get_ti(timestamp, time_series):
         return len(time_series) - len(time_series[time_series > timestamp])
 
     def shift_corection(data, index, coeff):
         return data + (-coeff * index)
+
     vec_shift = np.vectorize(shift_corection)
     start_time = time.time()
     signal = signal[::downsampling]
@@ -40,48 +40,37 @@ def get_states(signal,sampling_frequency, filename, downsampling, p_duration=Non
     indices = range(len(signal))
     signal = vec_shift(signal, indices, coeff)
     n_points = len(signal)  # number of points
-
     # time values
-    time_step = (5e-5)*downsampling
-    if p_duration==None:
-        duration=n_points/sampling_frequency
+    time_step = (5e-5) * downsampling
+    if p_duration == None:
+        duration = n_points / sampling_frequency
     else:
         duration = p_duration
     time_set = np.arange(0, duration, time_step)
-    rang = np.arange(1, len(time_set),1)
-
-    signal= np.array(signal)
+    rang = np.arange(1, len(time_set), 1)
+    signal = np.array(signal)
     # automatic detection of up and down states
-    k=0
     min_value = min(signal)
     max_value = max(signal)
-    loc_median = np.median(signal[:int((duration/time_step))])
-    loc_mad = median_absolute_deviation(signal)
-    ub = loc_median+k*loc_mad
-    lb=loc_median-k*loc_mad
-    uads =[]
-    min_state_duration= 0.1  # s
-    intervalle=get_ti(min_state_duration,time_set)-get_ti(0,time_set)
-    h_int=math.floor(intervalle/2)
+    uads = []
+    min_state_duration = 0.1  # s
+    intervalle = get_ti(min_state_duration, time_set) - get_ti(0, time_set)
+    h_int = math.floor(intervalle / 2)
     print(h_int)
     h_int_t = int(math.floor((8 / time_step) / 2))
-    loc_range= np.arange((1+h_int),(-1+len(rang)-h_int),1)
-    #   loc_range = range(h_int, 20000-h_int)
-    loc_signal=[]
-    loc_time=[]
-    loc_metric_1=[]
-    loc_metric_2=[]
-    loc_metric_3=[]
-    loc_threshold=[]
+    loc_range = np.arange((1 + h_int), (-1 + len(rang) - h_int), 1)
+    loc_signal = []
+    loc_time = []
+    loc_threshold = []
     val = min_value
     threshold = np.median(signal[(0 + h_int_t)])
     for i in loc_range:
-        loc_series=signal[(i-h_int):(i+h_int)]
-        temp_median=np.median(loc_series)
+        loc_series = signal[(i - h_int):(i + h_int)]
+        temp_median = np.median(loc_series)
 
         if i % 20000 == 0:
             threshold = np.median(signal[(i - h_int_t):(i + h_int_t)])
-            print(i/20000)
+            print(i / 20000)
         to_test = temp_median
         if not np.isnan(to_test):
 
@@ -95,48 +84,47 @@ def get_states(signal,sampling_frequency, filename, downsampling, p_duration=Non
         loc_signal.append(signal[i])
         loc_threshold.append(threshold)
 
-    metrics = pd.DataFrame({"Time": loc_time,"Signal": loc_signal, "Threshold":loc_threshold, "uads": uads})
-    metrics=metrics[5*20000:]
+    metrics = pd.DataFrame({"Time": loc_time, "Signal": loc_signal, "Threshold": loc_threshold, "uads": uads})
+    metrics = metrics[5 * 20000:]
     print("--- %s seconds ---" % (time.time() - start_time))
-    res={}
+    res = {}
     mylen = np.vectorize(len)
     states_splitted = np.split(metrics["uads"], np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1)
-    index_states=np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1
-    states_list=pd.DataFrame()
+    index_states = np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1
+    states_list = pd.DataFrame()
     states_splitted.pop(0)
-    for i in range(len(states_splitted)-1):
-        if states_splitted[i].iloc[0]==min_value:
-            state="Down"
+    for i in range(len(states_splitted) - 1):
+        if states_splitted[i].iloc[0] == min_value:
+            state = "Down"
         else:
-            state="Up"
-
-        onset=index_states[i]/20000
-
+            state = "Up"
+        onset = index_states[i] / 20000
         state_item = pd.DataFrame({"Filename": filename,
-                               "State":state,
-                               "Start":onset+5.05,
-                               "End":(index_states[i]+len(states_splitted[i]))/20000+5.05,
-                               "Duration":len(states_splitted[i])/20000,
-                               "Mean Value":np.round(np.mean(metrics["Signal"][index_states[i]:index_states[i]+len(states_splitted[i])]),3),
-                               "Variation PM":np.round(variation(metrics["Signal"][index_states[i]:index_states[i]+len(states_splitted[i])]),3)
-                               },index=[i])
-        states_list=states_list.append(state_item)
-    #
-    #states_splitted[np.argwhere(mylen(np.delete(states_splitted,0)[::2])>100*20)]=min_value #threshold at 100ms minimum duration upstate
-    #frequency of Upstate and Downstate
-    frequency_up= len(metrics["uads"][metrics["uads"] == max_value])
-    frequency_down= len(metrics["uads"][metrics["uads"] == min_value])
-    res["up_frequency"] = (frequency_up/len(metrics["uads"]))
-    res["down_frequency"] = (frequency_down/len(metrics["uads"]))
-    #Average of duration of Up/Downstate
-    #states_splitted = np.split(uads, np.argwhere(np.diff(uads) != 0)[:,0] + 1)
-    res["down_duration"] = (np.mean(mylen(states_splitted[::2]))*time_step)
-    res["up_duration"] = (np.mean(mylen(np.delete(states_splitted,0)[::2]))*time_step)
-    #Average value of Up/Downstate
+                                   "State": state,
+                                   "Start": onset + 5.05,
+                                   "End": (index_states[i] + len(states_splitted[i])) / 20000 + 5.05,
+                                   "Duration": len(states_splitted[i]) / 20000,
+                                   "Mean Value": np.round(np.mean(
+                                       metrics["Signal"][index_states[i]:index_states[i] + len(states_splitted[i])]),
+                                                          3),
+                                   "Variation PM": np.round(variation(
+                                       metrics["Signal"][index_states[i]:index_states[i] + len(states_splitted[i])]), 3)
+                                   }, index=[i])
+        states_list = states_list.append(state_item)
+    # frequency of Upstate and Downstate
+    frequency_up = len(metrics["uads"][metrics["uads"] == max_value])
+    frequency_down = len(metrics["uads"][metrics["uads"] == min_value])
+    res["up_frequency"] = (frequency_up / len(metrics["uads"]))
+    res["down_frequency"] = (frequency_down / len(metrics["uads"]))
+    # Average of duration of Up/Downstate
+    res["down_duration"] = (np.mean(mylen(states_splitted[::2])) * time_step)
+    res["up_duration"] = (np.mean(mylen(np.delete(states_splitted, 0)[::2])) * time_step)
+    # Average value of Up/Downstate
     res["down_value"] = np.mean(metrics["Signal"][metrics["uads"] == min_value])
     res["up_value"] = np.mean(metrics["Signal"][metrics["uads"] == max_value])
     res["filename"] = filename
-    return metrics,states_list,res
+    return metrics, states_list, res
+
 
 def states_computation(group_name, directory_path, sf, downsampling_coeff):
     print("Up/Down state computaion for " + str(group_name) + " files")
@@ -154,21 +142,24 @@ def states_computation(group_name, directory_path, sf, downsampling_coeff):
     return all_states_df, output_dataframe
 
 
-def two_groups_states_computation(group1_name, group2_name, group1_path, group2_path, sf, downsampling_coeff, filename_output=None,filename_states=None):
+def two_groups_states_computation(group1_name, group2_name, group1_path, group2_path, sf, downsampling_coeff,
+                                  filename_output=None, filename_states=None):
     """Return two dataframes:
             -every_states_dataframe: contains details mesure on every states detected
             -output_data_frame: classic dataframe containing Up/Down states measures
             for every cells for both groups
     """
-    output_dataframe=pd.DataFrame()
+    output_dataframe = pd.DataFrame()
     states_dataframe = pd.DataFrame()
     grp1_all_states, grp1_output = states_computation(group1_name, group1_path, sf, downsampling_coeff)
     grp2_all_states, grp2_output = states_computation(group2_name, group2_path, sf, downsampling_coeff)
-    output_dataframe = output_dataframe.append(grp1_output,ignore_index=True)
+    output_dataframe = output_dataframe.append(grp1_output, ignore_index=True)
     output_dataframe = output_dataframe.append(grp2_output, ignore_index=True)
-    states_dataframe = states_dataframe.append(grp1_all_states,ignore_index=True)
+    states_dataframe = states_dataframe.append(grp1_all_states, ignore_index=True)
     states_dataframe = states_dataframe.append(grp2_all_states, ignore_index=True)
-    output_dataframe = output_dataframe[["filename", "group", "up_duration", 'up_frequency', 'up_value', "down_duration", "down_frequency", "down_value"]]  # reorder the columns
+    output_dataframe = output_dataframe[
+        ["filename", "group", "up_duration", 'up_frequency', 'up_value', "down_duration", "down_frequency",
+         "down_value"]]  # reorder the columns
     if filename_output:
         output_dataframe.to_excel(os.path.join('UDSD' + group1_name + group2_name + ".xlsx"))
     else:
@@ -183,23 +174,22 @@ def two_groups_states_computation(group1_name, group2_name, group1_path, group2_
 
 if __name__ == '__main__':
     # Parameters to modify
-    group1_name = "WT"
-    group2_name = "KO"
-    group1_path = "temp_test_WT"
-    group2_path = "temp_test_ko"
+    group1_name = "KO BMS"
+    group2_name = "KO DMSO"
+    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO BMS191011/"
+    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
     sampling_frequency = 20000  # Hz
-    #(Optional) name of the filename that will be save containing info by cell
-    filename_output="Test1.xlsx"
-    #(Optional) name of the filename that will be save containing info by states
-    filename_states="Test2.xlsx"
+    # (Optional) name of the filename that will be save containing info by cell
+    filename_output = "KO_BMS_KO_DMSO_cells.xlsx"
+    # (Optional) name of the filename that will be save containing info by states
+    filename_states = "KO_BMS_KO_DMSO_states.xlsx"
     ###########################
     """!!!!!!!!!!!!Don't change downsampling_coeff!!!!!!!!!!!!!!!!"""
     """The downsamping coeff is to make the computation faster by reducing the number of points taken in account 
     for the computation. It's only useful when the sampling rate is very high(ex: >3khz).But need improvement.
     """
-    downsampling_coeff = 1#Serioulsy don't
+    downsampling_coeff = 1
     ###########################
     folders = {group1_name: group1_path, group2_name: group2_path}
     every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
                                                                sampling_frequency, downsampling_coeff)
-
