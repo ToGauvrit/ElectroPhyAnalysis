@@ -48,7 +48,7 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
         duration = p_duration
     time_set = np.arange(0, duration, time_step)
     rang = np.arange(1, len(time_set), 1)
-    signal = np.array(signal)
+    signal = np.array(signal, dtype=object)
     # automatic detection of up and down states
     min_value = min(signal)
     max_value = max(signal)
@@ -133,7 +133,7 @@ def states_computation(group_name, directory_path, sf, downsampling_coeff):
     for filename in files:
         bar.next()
         abf_signal = pyabf.ABF(os.path.join(directory_path, filename))
-        signal = np.array(abf_signal.sweepY)
+        signal = np.array(abf_signal.sweepY, dtype=object)
         metrics, states_list, udsd_dic = get_states(signal, sf, filename, downsampling_coeff)
         udsd_dic["group"] = group_name
         all_states_df = all_states_df.append(states_list, ignore_index=True)
