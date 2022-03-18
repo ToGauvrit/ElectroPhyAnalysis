@@ -124,7 +124,7 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
     return metrics, states_list, res
 
 
-def states_computation(group_name, directory_path, sf, downsampling_coeff):
+def udsd(group_name, directory_path, sf, downsampling_coeff):
     print("Up/Down state computaion for " + str(group_name) + " files")
     output_dataframe = pd.DataFrame()
     all_states_df = pd.DataFrame()
@@ -151,8 +151,8 @@ def two_groups_states_computation(group1_name, group2_name, group1_path, group2_
     """
     output_dataframe = pd.DataFrame()
     states_dataframe = pd.DataFrame()
-    grp1_all_states, grp1_output = states_computation(group1_name, group1_path, sf, downsampling_coeff)
-    grp2_all_states, grp2_output = states_computation(group2_name, group2_path, sf, downsampling_coeff)
+    grp1_all_states, grp1_output = udsd(group1_name, group1_path, sf, downsampling_coeff)
+    grp2_all_states, grp2_output = udsd(group2_name, group2_path, sf, downsampling_coeff)
     output_dataframe = output_dataframe.append(grp1_output, ignore_index=True)
     output_dataframe = output_dataframe.append(grp2_output, ignore_index=True)
     states_dataframe = states_dataframe.append(grp1_all_states, ignore_index=True)
@@ -175,9 +175,9 @@ def two_groups_states_computation(group1_name, group2_name, group1_path, group2_
 if __name__ == '__main__':
     start_time = time.time()
     # Parameters to modify
-    group1_name = "WT BMS"
+    group1_name = "ForTheo"
     group2_name = "WT DMSO"
-    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/WT BMS191011/"
+    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/For Theo"
     group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/WT DMSO"
     sampling_frequency = 20000  # Hz
     ###########################

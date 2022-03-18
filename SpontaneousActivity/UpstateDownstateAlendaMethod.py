@@ -14,7 +14,7 @@ import os
 from Utils import browse_directory
 import matplotlib.pyplot as plt
 import time
-from outliers import smirnov_grubbs as grubbs
+
 
 def compute_states_discrimination(signal):
 

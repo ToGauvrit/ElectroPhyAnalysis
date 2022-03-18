@@ -111,11 +111,22 @@ def computation_psd_bands(psd_dataframe_group1, psd_dataframe_group2, freqs, gro
     return output_result
 
 
+def psd(group_path,group_name,sampling_frequency,bands):
+    psd_grp, freqs = psd_computation(group_name, group_path, sampling_frequency)
+    output = pd.DataFrame(columns=["Group", "Filename"]+list(bands.keys()))
+    for index, row in psd_grp.iterrows():
+        psd_per_bands = get_power_per_bands(row["PSD"], bands, freqs)
+        psd_per_bands["Group"] = row["Group"]
+        psd_per_bands["Filename"] = row["Filename"]
+        output = output.append(psd_per_bands, ignore_index=True)
+    return output
+
+
 if __name__ == '__main__':
     # Parameters to modify
-    group1_name = "KO BMS"
+    group1_name = "For Theo"
     group2_name = "KO DMSO"
-    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO BMS191011/"
+    group1_path =  "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/For Theo"
     group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
     sampling_frequency = 20000  # Hz
     bands = {"Delta": [0.5, 4], "Theta": [4, 7], "Alpha1": [8, 10],"Alpha2": [10, 12], "Beta": [13, 30],
