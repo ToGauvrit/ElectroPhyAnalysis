@@ -126,8 +126,8 @@ if __name__ == '__main__':
     # Parameters to modify
     group1_name = "For Theo"
     group2_name = "KO DMSO"
-    group1_path =  "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/For Theo"
-    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
+    group1_path =  ""
+    group2_path = ""
     sampling_frequency = 20000  # Hz
     bands = {"Delta": [0.5, 4], "Theta": [4, 7], "Alpha1": [8, 10],"Alpha2": [10, 12], "Beta": [13, 30],
              "Gamma": [30, 100]}

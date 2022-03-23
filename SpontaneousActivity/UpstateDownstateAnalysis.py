@@ -177,8 +177,8 @@ if __name__ == '__main__':
     # Parameters to modify
     group1_name = "ForTheo"
     group2_name = "WT DMSO"
-    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/For Theo"
-    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Spontaneous Activity_FmKO/WT DMSO"
+    group1_path = ""
+    group2_path = ""
     sampling_frequency = 20000  # Hz
     ###########################
     """!!!!!!!!!!!!Don't change downsampling_coeff!!!!!!!!!!!!!!!!"""

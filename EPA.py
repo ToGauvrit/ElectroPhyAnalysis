@@ -17,8 +17,7 @@ if __name__ == '__main__':
     sampling_frequency = 20000
     bands = {"Delta": [0.5, 4], "Theta": [4, 7], "Alpha": [8, 12], "Beta": [13, 30],
              "Gamma": [30, 100]}
-    server_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/" \
-                  "In Vivo Patch Clamp Recordings/"
+    server_path = ""
     groups_path = {
         "KO BMS191011": {
             "spontaneous": server_path + "Spontaneous Activity_FmKO/For Theo"
