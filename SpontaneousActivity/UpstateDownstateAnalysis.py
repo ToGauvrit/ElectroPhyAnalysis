@@ -83,8 +83,7 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
         loc_threshold.append(threshold)
 
     metrics = pd.DataFrame({"Time": loc_time, "Signal": loc_signal, "Threshold": loc_threshold, "uads": uads})
-    metrics = metrics[5 * 20000:]
-
+    metrics = metrics[5 * sampling_frequency:]
     res = {}
     mylen = np.vectorize(len)
     states_splitted = np.split(metrics["uads"], np.argwhere(np.diff(metrics["uads"]) != 0)[:, 0] + 1)
@@ -99,9 +98,9 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
         onset = index_states[i] / 20000
         state_item = pd.DataFrame({"Filename": filename,
                                    "State": state,
-                                   "Start": onset + 5.05,
-                                   "End": (index_states[i] + len(states_splitted[i])) / 20000 + 5.05,
-                                   "Duration": len(states_splitted[i]) / 20000,
+                                   "Start": onset + 5.05,  # shift of 5.05 because we crop the first 5s
+                                   "End": (index_states[i] + len(states_splitted[i])) / sampling_frequency + 5.05,
+                                   "Duration": len(states_splitted[i]) / sampling_frequency,
                                    "Mean Value": np.round(np.mean(
                                        metrics["Signal"][index_states[i]:index_states[i] + len(states_splitted[i])]),
                                                           3),
@@ -109,17 +108,18 @@ def get_states(signal, sampling_frequency, filename, downsampling, p_duration=No
                                        metrics["Signal"][index_states[i]:index_states[i] + len(states_splitted[i])]), 3)
                                    }, index=[i])
         states_list = states_list.append(state_item)
+    states_list = remove_small_upstates(states_list)
     # frequency of Upstate and Downstate
-    frequency_up = len(metrics["uads"][metrics["uads"] == max_value])
-    frequency_down = len(metrics["uads"][metrics["uads"] == min_value])
-    res["up_frequency"] = (frequency_up / len(metrics["uads"]))
-    res["down_frequency"] = (frequency_down / len(metrics["uads"]))
+    frequency_up = len(states_list[states_list["State"] == "Up"])
+    frequency_down =len(states_list[states_list["State"] == "Down"])
+    res["up_frequency"] = (frequency_up / (len(metrics["uads"])/sampling_frequency))
+    res["down_frequency"] = (frequency_down / (len(metrics["uads"])/sampling_frequency))
     # Average of duration of Up/Downstate
-    res["down_duration"] = (np.mean(mylen(states_splitted[::2])) * time_step)
-    res["up_duration"] = (np.mean(mylen(np.delete(states_splitted, 0)[::2])) * time_step)
+    res["down_duration"] = np.mean(states_list["Duration"][states_list["State"]=="Down"])
+    res["up_duration"] = np.mean(states_list["Duration"][states_list["State"]=="Up"])
     # Average value of Up/Downstate
-    res["down_value"] = np.mean(metrics["Signal"][metrics["uads"] == min_value])
-    res["up_value"] = np.mean(metrics["Signal"][metrics["uads"] == max_value])
+    res["down_value"] = np.mean(states_list["Mean Value"][states_list["State"]=="Down"])
+    res["up_value"] = np.mean(states_list["Mean Value"][states_list["State"]=="Up"])
     res["filename"] = filename
     return metrics, states_list, res
 
@@ -172,22 +172,32 @@ def two_groups_states_computation(group1_name, group2_name, group1_path, group2_
     return states_dataframe, output_dataframe
 
 
+def remove_small_upstates(states, threshold_duration_s=0.1):
+    for i in range(len(states)):
+        if i in states.index and states.loc[i]["Duration"] < threshold_duration_s and states.loc[i]["State"] == "Up":
+            if i-1 in states.index and states.loc[i-1]["State"] == "Down":
+                states = states.drop(i-1)
+            if i+1 in states.index and states.loc[i+1]["State"] == "Down":
+                states = states.drop(i+1)
+            states = states.drop(i)
+    return states
+
+
 if __name__ == '__main__':
     start_time = time.time()
     # Parameters to modify
     group1_name = "ForTheo"
     group2_name = "WT DMSO"
-    group1_path = ""
-    group2_path = ""
+    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo " \
+                  "Patch Clamp Recordings/Spontaneous Activity_FmKO/KO BMS191011"
+    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo " \
+                  "Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
     sampling_frequency = 20000  # Hz
     ###########################
-    """!!!!!!!!!!!!Don't change downsampling_coeff!!!!!!!!!!!!!!!!"""
-    """The downsamping coeff is to make the computation faster by reducing the number of points taken in account 
-    for the computation. It's only useful when the sampling rate is very high(ex: >3khz).But need improvement.
-    """
-    downsampling_coeff = 1
+    downsampling_coeff = 1  # don't change it
     ###########################
     folders = {group1_name: group1_path, group2_name: group2_path}
     every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
                                                                sampling_frequency, downsampling_coeff)
     print("--- %s seconds ---" % (time.time() - start_time))
+

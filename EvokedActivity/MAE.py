@@ -41,5 +41,5 @@ def mae(group_name, group_path, sampling_freq, stim_timing=1.04, window_duration
 
 if __name__ == '__main__':
     group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Evoked Responses_FmKO"
-    output_df = mae(group_name="KO DMSO", group_path=group1_path, sampling_freq=20000)
+    output_df = mae(group_name="fmKO", group_path=group1_path, sampling_freq=20000)
     output_df.to_excel("MAE.xlsx")
