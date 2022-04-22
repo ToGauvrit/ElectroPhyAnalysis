@@ -131,6 +131,7 @@ def udsd(group_name, directory_path, sf, downsampling_coeff):
     files = browse_directory(directory_path, ".abf")
     bar = IncrementalBar('Files anlyzed', max=len(files))
     for filename in files:
+        print(filename)
         bar.next()
         abf_signal = pyabf.ABF(os.path.join(directory_path, filename))
         signal = np.array(abf_signal.sweepY, dtype=object)
@@ -183,21 +184,27 @@ def remove_small_upstates(states, threshold_duration_s=0.1):
     return states
 
 
-if __name__ == '__main__':
-    start_time = time.time()
-    # Parameters to modify
-    group1_name = "ForTheo"
-    group2_name = "WT DMSO"
-    group1_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo " \
-                  "Patch Clamp Recordings/Spontaneous Activity_FmKO/KO BMS191011"
-    group2_path = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo " \
-                  "Patch Clamp Recordings/Spontaneous Activity_FmKO/KO DMSO"
-    sampling_frequency = 20000  # Hz
-    ###########################
-    downsampling_coeff = 1  # don't change it
-    ###########################
-    folders = {group1_name: group1_path, group2_name: group2_path}
-    every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
-                                                               sampling_frequency, downsampling_coeff)
-    print("--- %s seconds ---" % (time.time() - start_time))
+def duration_serial_corelation(serie):
+    """serial correlation between the Up and Downstates that are following each other"""
+    return serie.autocorr(lag=1)
 
+
+if __name__ == '__main__':
+    # start_time = time.time()
+    # # Parameters to modify
+    # group1_name = "WT DMSO"
+    # group2_name = "WT BMS191011"
+    # group1_path = "/datas/Théo/patch_clamp_yukti_data/WT DMSO"
+    # group2_path = "/datas/Théo/patch_clamp_yukti_data/WT BMS191011"
+    # sampling_frequency = 20000  # Hz
+    # ###########################
+    # downsampling_coeff = 1  # don't change it
+    # ###########################
+    # folders = {group1_name: group1_path, group2_name: group2_path}
+    # every_states_df, output_df = two_groups_states_computation(group1_name, group2_name, group1_path, group2_path,
+    #                                                            sampling_frequency, downsampling_coeff)
+    # print("--- %s seconds ---" % (time.time() - start_time))
+
+    # Serial correalation of duration
+    dataf = pd.read_excel("statesKO DMSOWT BMS191011.xlsx").iloc[1289:]
+    print(duration_serial_corelation(dataf["Duration"]))

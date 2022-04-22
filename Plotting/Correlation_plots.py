@@ -93,6 +93,7 @@ def correlation_matrix(all_parameters_data, parameters_to_exclude):
     print(all_parameters_data["GENOTYPE"])
     col_names1 = list(all_parameters_data.columns)
     for col in parameters_to_exclude:
+        print(col)
         col_names1.remove(col)
         all_parameters_data = all_parameters_data.drop(col, axis=1)
     pvalue_matrix = pd.DataFrame(index=col_names1, columns=col_names1)
@@ -108,8 +109,10 @@ def correlation_matrix(all_parameters_data, parameters_to_exclude):
                 column_data = column_data.astype(np.float)
                 print(column_name1)
                 column_data1 = column_data1.astype(np.float)
-                data = grubbs.test(column_data.values, alpha=0.05)
-                data1 = grubbs.test(column_data1.values, alpha=0.05)
+                # data = grubbs.test(column_data.values, alpha=0.05)
+                # data1 = grubbs.test(column_data1.values, alpha=0.05)
+                data = column_data.values
+                data1 = column_data1.values
                 col1_nan = set(np.argwhere(np.isnan(data)).flat)
                 col2_nan = set(np.argwhere(np.isnan(data1)).flat)
                 indices_nan = list(col1_nan) + list(col2_nan - col1_nan)
@@ -137,21 +140,38 @@ def correlation_nodes_graph():
 
 
 if __name__ == '__main__':
-    parameters_data = pd.read_csv("ArjunDataGlobal4.csv")
-    data_wt = parameters_data[parameters_data["GENOTYPE"] == "WT"]
-    data_wt = data_wt.replace('', np.nan)
-    to_exclude_wt = ["GENOTYPE", "RMSD", "Unnamed: 0", "CELL NUMBER", "CELL ID", "CELL ID spontaneous", "5th AP",
-                     'AP halfwidth ratio (5/1)', "AP halfwidth ratio (3/1)", "Alpha1", "Alpha2", "EPSP SD response",
-                     "Peak latency from Onset", 'Old SNR', "EPSP response var", "1st AP", "ADP amplitude", "MAE",
-                     "spont.firing"]
-    pvalue_wt, coeff_wt = correlation_matrix(data_wt, to_exclude_wt)
-    corr = pd.melt(pvalue_wt.reset_index(), id_vars='index') # Unpivot the dataframe, to get pair of arrays for x and y
-    coeff = pd.melt(coeff_wt.reset_index(), id_vars='index')
+    # parameters_data = pd.read_csv("ArjunDataGlobal4.csv")
+    # data_wt = parameters_data[parameters_data["GENOTYPE"] == "WT"]
+    # data_wt = data_wt.replace('', np.nan)
+    # to_exclude_wt = ["GENOTYPE", "RMSD", "Unnamed: 0", "CELL NUMBER", "CELL ID", "CELL ID spontaneous", "5th AP",
+    #                  'AP halfwidth ratio (5/1)', "AP halfwidth ratio (3/1)", "Alpha1", "Alpha2", "EPSP SD response",
+    #                  "Peak latency from Onset", 'Old SNR', "EPSP response var", "1st AP", "ADP amplitude", "MAE",
+    #                  "spont.firing"]
+    # pvalue_wt, coeff_wt = correlation_matrix(data_wt, to_exclude_wt)
+    # corr = pd.melt(pvalue_wt.reset_index(), id_vars='index') # Unpivot the dataframe, to get pair of arrays for x and y
+    # coeff = pd.melt(coeff_wt.reset_index(), id_vars='index')
+    # corr.columns = ['x', 'y', 'value']
+    # heatmap(
+    #     x=corr['x'],
+    #     y=corr['y'],
+    #     size=corr['value'].abs(),
+    #     color=coeff['value'],
+    #     filename="WTcorrelationPlotReduced.pdf"
+    # )
+    parameters_data = pd.read_excel("2022.04.19 - Combined Data Individual Cells.xlsx",sheet_name="FmKO Individual Cells")
+    data_kobms = parameters_data[parameters_data["GENOTYPE"] =="WT-BMS"]
+    data_kobms = data_kobms.replace('', np.nan)
+    to_exclude_kobms = ["GENOTYPE", "Unnamed: 0", "CELL NUMBER", "CELL ID", "CELL ID spontaneous"
+                        , "AP halfwidth ratio (3/1)", "Alpha1", "Alpha2",
+                     "Peak latency from Onset", "1st AP"]
+    pvalue_kobms, coeff_kobms = correlation_matrix(data_kobms, to_exclude_kobms)
+    corr = pd.melt(pvalue_kobms.reset_index(), id_vars='index') # Unpivot the dataframe, to get pair of arrays for x and y
+    coeff = pd.melt(coeff_kobms.reset_index(), id_vars='index')
     corr.columns = ['x', 'y', 'value']
     heatmap(
         x=corr['x'],
         y=corr['y'],
         size=corr['value'].abs(),
         color=coeff['value'],
-        filename="WTcorrelationPlotReduced.pdf"
+        filename="WTBMS_corrmatrix.pdf"
     )

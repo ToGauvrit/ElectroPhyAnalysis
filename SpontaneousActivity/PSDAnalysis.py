@@ -122,6 +122,19 @@ def psd(group_path,group_name,sampling_frequency,bands):
     return output
 
 
+def before_stim_psd(abf,sf, band=[0, 100], time_win=[16800, 20800]):
+    psd_list = []
+    for sweep in abf.sweepList:
+        abf.setSweep(sweep, channel=1)
+        signal = np.array(abf.sweepY)[time_win[0]:time_win[1]]
+        freqs, psd = welch_psd(signal,sampling_frequency)
+        idx_delta = np.logical_and(freqs >= band[0], freqs <= band[1])
+        freq_res = freqs[1] - freqs[0]
+        power = simps(psd[idx_delta], dx=freq_res)
+        psd_list.append(power)
+    return np.std(psd_list)
+
+
 if __name__ == '__main__':
     # Parameters to modify
     group1_name = "For Theo"
@@ -129,12 +142,26 @@ if __name__ == '__main__':
     group1_path =  ""
     group2_path = ""
     sampling_frequency = 20000  # Hz
-    bands = {"Delta": [0.5, 4], "Theta": [4, 7], "Alpha1": [8, 10],"Alpha2": [10, 12], "Beta": [13, 30],
-             "Gamma": [30, 100]}
+    # bands = {"Delta": [0.5, 4], "Theta": [4, 7], "Alpha1": [8, 10],"Alpha2": [10, 12], "Beta": [13, 30],
+    #          "Gamma": [30, 100]}
+    #
+    # #########################
+    # folders = {group1_name: group1_path, group2_name: group2_path}
+    # psd_grp1, freqs = psd_computation(group1_name, group1_path, sampling_frequency)
+    # psd_grp2, freqs = psd_computation(group2_name, group2_path, sampling_frequency)
+    # plot_periodogram(group1_name, group2_name, psd_grp1, psd_grp2, freqs, lim_band=[0, 100], median=True)
+    # output_result = computation_psd_bands(psd_grp1, psd_grp2, freqs, group1_name, group2_name, bands)
 
-    #########################
-    folders = {group1_name: group1_path, group2_name: group2_path}
-    psd_grp1, freqs = psd_computation(group1_name, group1_path, sampling_frequency)
-    psd_grp2, freqs = psd_computation(group2_name, group2_path, sampling_frequency)
-    plot_periodogram(group1_name, group2_name, psd_grp1, psd_grp2, freqs, lim_band=[0, 100], median=True)
-    output_result = computation_psd_bands(psd_grp1, psd_grp2, freqs, group1_name, group2_name, bands)
+    ##########################
+    # Evoked recordings 200ms PSD before stim
+    Group = "FmKO"
+    path_evoked = "/run/user/1004/gvfs/afp-volume:host=engram.local,user=Theo%20Gauvrit,volume=Data/Yukti/In Vivo Patch Clamp Recordings/Evoked Responses_FmKO"
+    files_evoked = browse_directory(path_evoked, ".abf")
+    output_std_psd = pd.DataFrame(columns=["Group", "Filename","SD 200ms PSD"])
+    for filename in files_evoked:
+        print(filename)
+        abf = pyabf.ABF(os.path.join(path_evoked, filename))
+        std_psd = before_stim_psd(abf,sf = sampling_frequency)
+        output_std_psd = output_std_psd.append({"Group":Group,"Filename": filename,"SD 200ms PSD": std_psd},ignore_index=True)
+        output_std_psd.to_excel("std_200msd_psd.xlsx")
+
